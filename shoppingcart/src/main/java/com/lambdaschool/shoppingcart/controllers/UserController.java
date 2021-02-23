@@ -1,12 +1,15 @@
 package com.lambdaschool.shoppingcart.controllers;
 
+import com.lambdaschool.shoppingcart.models.CartItem;
 import com.lambdaschool.shoppingcart.models.User;
+import com.lambdaschool.shoppingcart.repository.UserRepository;
 import com.lambdaschool.shoppingcart.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -27,6 +30,9 @@ public class UserController
      */
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private UserRepository userRepository;
 
     /**
      * Returns a list of all users
@@ -210,5 +216,14 @@ public class UserController
     {
         userService.delete(id);
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @GetMapping("/myinfo")
+    public ResponseEntity<?> getUserInfo(Authentication authentication)
+    {
+        User u = userRepository.findByUsername(authentication.getName());
+
+        return new ResponseEntity<>(u,
+            HttpStatus.OK);
     }
 }
