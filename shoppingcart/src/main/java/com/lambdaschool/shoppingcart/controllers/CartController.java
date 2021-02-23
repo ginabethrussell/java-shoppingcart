@@ -21,14 +21,12 @@ public class CartController
     @Autowired
     private UserService userService;
 
-    @Autowired
-    private UserRepository userRepository;
 
-    @GetMapping(value = "/cart",
+    @GetMapping(value = "/",
         produces = {"application/json"})
     public ResponseEntity<?> listCartItemsByAuthenticatedUser(Authentication authentication)
     {
-        User u = userRepository.findByUsername(authentication.getName());
+        User u = userService.findByName(authentication.getName());
         return new ResponseEntity<>(u,
             HttpStatus.OK);
     }
@@ -40,11 +38,11 @@ public class CartController
         @PathVariable
             long productid)
     {
-        User u = userRepository.findByUsername(authentication.getName());
-        CartItem addCartTtem = cartItemService.addToCart(u.getUserid(),
+        User u = userService.findByName(authentication.getName());
+        CartItem addCartItem = cartItemService.addToCart(u.getUserid(),
             productid,
             "I am not working");
-        return new ResponseEntity<>(addCartTtem,
+        return new ResponseEntity<>(addCartItem,
             HttpStatus.OK);
     }
 
@@ -55,7 +53,7 @@ public class CartController
         @PathVariable
             long productid)
     {
-        User u = userRepository.findByUsername(authentication.getName());
+        User u = userService.findByName(authentication.getName());
         CartItem removeCartItem = cartItemService.removeFromCart(u.getUserid(),
             productid,
             "I am still not working");

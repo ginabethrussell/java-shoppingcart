@@ -2,6 +2,7 @@ package com.lambdaschool.shoppingcart.controllers;
 
 import com.lambdaschool.shoppingcart.models.CartItem;
 import com.lambdaschool.shoppingcart.models.User;
+import com.lambdaschool.shoppingcart.models.UserRoles;
 import com.lambdaschool.shoppingcart.repository.UserRepository;
 import com.lambdaschool.shoppingcart.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,7 +17,9 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import javax.validation.Valid;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * The entry point for clients to access user data
@@ -31,8 +34,6 @@ public class UserController
     @Autowired
     private UserService userService;
 
-    @Autowired
-    private UserRepository userRepository;
 
     /**
      * Returns a list of all users
@@ -59,16 +60,34 @@ public class UserController
      * @return JSON object of the user you seek
      * @see UserService#findUserById(long) UserService.findUserById(long)
      */
-    @PreAuthorize(value = "hasAnyRole('ADMIN')")
+    @PreAuthorize(value = "hasAnyRole('ADMIN','USER')")
     @GetMapping(value = "/user/{userId}",
         produces = "application/json")
     public ResponseEntity<?> getUserById(
         @PathVariable
-            Long userId)
+            Long userId,
+        Authentication authentication)
     {
-        User u = userService.findUserById(userId);
-        return new ResponseEntity<>(u,
-            HttpStatus.OK);
+        User au = userService.findByName(authentication.getName());
+        Set<UserRoles> userRoles =  au.getRoles();
+        for (UserRoles role : userRoles)
+        {
+            if (role.getRole().getName()
+                .equals("ADMIN"))
+            {
+                User u = userService.findUserById(userId);
+                return new ResponseEntity<>(u,
+                    HttpStatus.OK);
+            }
+        }
+        if(au.getUserid() == userId)
+        {
+            return new ResponseEntity<>(au,
+                HttpStatus.OK);
+        }
+
+        return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+
     }
 
     /**
@@ -187,18 +206,38 @@ public class UserController
      * @return A status of OK
      * @see UserService#update(User, long) UserService.update(User, long)
      */
-    @PreAuthorize(value = "hasAnyRole('ADMIN')")
+    @PreAuthorize(value = "hasAnyRole('ADMIN','USER')")
     @PatchMapping(value = "/user/{id}",
         consumes = "application/json")
     public ResponseEntity<?> updateUser(
         @RequestBody
             User updateUser,
         @PathVariable
-            long id)
+            long id,
+        Authentication authentication)
     {
-        userService.update(updateUser,
-            id);
-        return new ResponseEntity<>(HttpStatus.OK);
+        User au = userService.findByName(authentication.getName());
+
+        Set<UserRoles> userRoles =  au.getRoles();
+        for (UserRoles role : userRoles)
+        {
+            if (role.getRole().getName()
+                .equals("ADMIN"))
+            {
+                userService.update(updateUser,
+                    id);
+                return new ResponseEntity<>(HttpStatus.OK);
+            }
+        }
+        if(au.getUserid() == id)
+        {
+            userService.update(updateUser,
+                    id);
+            return new ResponseEntity<>(HttpStatus.OK);
+        }
+
+        return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+
     }
 
     /**
@@ -221,7 +260,7 @@ public class UserController
     @GetMapping("/myinfo")
     public ResponseEntity<?> getUserInfo(Authentication authentication)
     {
-        User u = userRepository.findByUsername(authentication.getName());
+        User u = userService.findByName(authentication.getName());
 
         return new ResponseEntity<>(u,
             HttpStatus.OK);
