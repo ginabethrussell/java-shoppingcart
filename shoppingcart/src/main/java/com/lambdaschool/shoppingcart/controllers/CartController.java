@@ -1,5 +1,7 @@
 package com.lambdaschool.shoppingcart.controllers;
 
+import com.lambdaschool.shoppingcart.repository.UserRepository;
+import org.springframework.security.core.Authentication;
 import com.lambdaschool.shoppingcart.models.CartItem;
 import com.lambdaschool.shoppingcart.models.User;
 import com.lambdaschool.shoppingcart.services.CartItemService;
@@ -19,41 +21,40 @@ public class CartController
     @Autowired
     private UserService userService;
 
-    @GetMapping(value = "/user/{userid}",
+
+    @GetMapping(value = "/",
         produces = {"application/json"})
-    public ResponseEntity<?> listCartItemsByUserId(
-        @PathVariable
-            long userid)
+    public ResponseEntity<?> listCartItemsByAuthenticatedUser(Authentication authentication)
     {
-        User u = userService.findUserById(userid);
+        User u = userService.findByName(authentication.getName());
         return new ResponseEntity<>(u,
             HttpStatus.OK);
     }
 
-    @PutMapping(value = "/add/user/{userid}/product/{productid}",
+    @PutMapping(value = "/add/product/{productid}",
         produces = {"application/json"})
     public ResponseEntity<?> addToCart(
-        @PathVariable
-            long userid,
+        Authentication authentication,
         @PathVariable
             long productid)
     {
-        CartItem addCartTtem = cartItemService.addToCart(userid,
+        User u = userService.findByName(authentication.getName());
+        CartItem addCartItem = cartItemService.addToCart(u.getUserid(),
             productid,
             "I am not working");
-        return new ResponseEntity<>(addCartTtem,
+        return new ResponseEntity<>(addCartItem,
             HttpStatus.OK);
     }
 
-    @DeleteMapping(value = "/remove/user/{userid}/product/{productid}",
+    @DeleteMapping(value = "/remove/product/{productid}",
         produces = {"application/json"})
     public ResponseEntity<?> removeFromCart(
-        @PathVariable
-            long userid,
+        Authentication authentication,
         @PathVariable
             long productid)
     {
-        CartItem removeCartItem = cartItemService.removeFromCart(userid,
+        User u = userService.findByName(authentication.getName());
+        CartItem removeCartItem = cartItemService.removeFromCart(u.getUserid(),
             productid,
             "I am still not working");
         return new ResponseEntity<>(removeCartItem,

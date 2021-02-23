@@ -1,18 +1,25 @@
 package com.lambdaschool.shoppingcart.controllers;
 
+import com.lambdaschool.shoppingcart.models.CartItem;
 import com.lambdaschool.shoppingcart.models.User;
+import com.lambdaschool.shoppingcart.models.UserRoles;
+import com.lambdaschool.shoppingcart.repository.UserRepository;
 import com.lambdaschool.shoppingcart.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import javax.validation.Valid;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * The entry point for clients to access user data
@@ -27,6 +34,7 @@ public class UserController
     @Autowired
     private UserService userService;
 
+
     /**
      * Returns a list of all users
      * <br>Example: <a href="http://localhost:2019/users/users">http://localhost:2019/users/users</a>
@@ -34,6 +42,7 @@ public class UserController
      * @return JSON list of all users with a status of OK
      * @see UserService#findAll() UserService.findAll()
      */
+    @PreAuthorize(value = "hasAnyRole('ADMIN')")
     @GetMapping(value = "/users",
         produces = "application/json")
     public ResponseEntity<?> listAllUsers()
@@ -51,15 +60,34 @@ public class UserController
      * @return JSON object of the user you seek
      * @see UserService#findUserById(long) UserService.findUserById(long)
      */
+    @PreAuthorize(value = "hasAnyRole('ADMIN','USER')")
     @GetMapping(value = "/user/{userId}",
         produces = "application/json")
     public ResponseEntity<?> getUserById(
         @PathVariable
-            Long userId)
+            Long userId,
+        Authentication authentication)
     {
-        User u = userService.findUserById(userId);
-        return new ResponseEntity<>(u,
-            HttpStatus.OK);
+        User au = userService.findByName(authentication.getName());
+        Set<UserRoles> userRoles =  au.getRoles();
+        for (UserRoles role : userRoles)
+        {
+            if (role.getRole().getName()
+                .equals("ADMIN"))
+            {
+                User u = userService.findUserById(userId);
+                return new ResponseEntity<>(u,
+                    HttpStatus.OK);
+            }
+        }
+        if(au.getUserid() == userId)
+        {
+            return new ResponseEntity<>(au,
+                HttpStatus.OK);
+        }
+
+        return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+
     }
 
     /**
@@ -70,6 +98,7 @@ public class UserController
      * @return JSON object of the user you seek
      * @see UserService#findByName(String) UserService.findByName(String)
      */
+    @PreAuthorize(value = "hasAnyRole('ADMIN')")
     @GetMapping(value = "/user/name/{userName}",
         produces = "application/json")
     public ResponseEntity<?> getUserByName(
@@ -89,6 +118,7 @@ public class UserController
      * @return A JSON list of users you seek
      * @see UserService#findByNameContaining(String) UserService.findByNameContaining(String)
      */
+    @PreAuthorize(value = "hasAnyRole('ADMIN')")
     @GetMapping(value = "/user/name/like/{userName}",
         produces = "application/json")
     public ResponseEntity<?> getUserLikeName(
@@ -111,6 +141,7 @@ public class UserController
      * @throws URISyntaxException Exception if something does not work in creating the location header
      * @see UserService#save(User) UserService.save(User)
      */
+    @PreAuthorize(value = "hasAnyRole('ADMIN')")
     @PostMapping(value = "/user",
         consumes = "application/json")
     public ResponseEntity<?> addNewUser(
@@ -148,6 +179,7 @@ public class UserController
      * @return status of OK
      * @see UserService#save(User) UserService.save(User)
      */
+    @PreAuthorize(value = "hasAnyRole('ADMIN')")
     @PutMapping(value = "/user/{userid}",
         consumes = "application/json")
     public ResponseEntity<?> updateFullUser(
@@ -174,17 +206,38 @@ public class UserController
      * @return A status of OK
      * @see UserService#update(User, long) UserService.update(User, long)
      */
+    @PreAuthorize(value = "hasAnyRole('ADMIN','USER')")
     @PatchMapping(value = "/user/{id}",
         consumes = "application/json")
     public ResponseEntity<?> updateUser(
         @RequestBody
             User updateUser,
         @PathVariable
-            long id)
+            long id,
+        Authentication authentication)
     {
-        userService.update(updateUser,
-            id);
-        return new ResponseEntity<>(HttpStatus.OK);
+        User au = userService.findByName(authentication.getName());
+
+        Set<UserRoles> userRoles =  au.getRoles();
+        for (UserRoles role : userRoles)
+        {
+            if (role.getRole().getName()
+                .equals("ADMIN"))
+            {
+                userService.update(updateUser,
+                    id);
+                return new ResponseEntity<>(HttpStatus.OK);
+            }
+        }
+        if(au.getUserid() == id)
+        {
+            userService.update(updateUser,
+                    id);
+            return new ResponseEntity<>(HttpStatus.OK);
+        }
+
+        return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+
     }
 
     /**
@@ -194,6 +247,7 @@ public class UserController
      * @param id the primary key of the user you wish to delete
      * @return Status of OK
      */
+    @PreAuthorize(value = "hasAnyRole('ADMIN')")
     @DeleteMapping(value = "/user/{id}")
     public ResponseEntity<?> deleteUserById(
         @PathVariable
@@ -201,5 +255,14 @@ public class UserController
     {
         userService.delete(id);
         return new ResponseEntity<>(HttpStatus.OK);
+    }
+
+    @GetMapping("/myinfo")
+    public ResponseEntity<?> getUserInfo(Authentication authentication)
+    {
+        User u = userService.findByName(authentication.getName());
+
+        return new ResponseEntity<>(u,
+            HttpStatus.OK);
     }
 }
