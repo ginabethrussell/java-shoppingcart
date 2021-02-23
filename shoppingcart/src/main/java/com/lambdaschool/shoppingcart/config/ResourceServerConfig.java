@@ -34,12 +34,11 @@ public class ResourceServerConfig extends ResourceServerConfigurerAdapter
                 "/createnewuser")
             .permitAll()
             .antMatchers("/logout",
-                "/carts/**," +
-                    "")
+                "/carts/**",
+                "/users/**")
             .authenticated()
             .antMatchers("/roles/**",
-                "/products/**",
-                "/users/**"
+                "/products/**"
                 )
             .hasAnyRole("ADMIN")
             .anyRequest().denyAll()
